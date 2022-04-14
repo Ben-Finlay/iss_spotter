@@ -1,23 +1,48 @@
-const request = require("request");
+/**
+ * Orchestrates multiple API requests in order to determine the next 5 upcoming ISS fly overs for the user's current location.
+ * Input:
+ *   - A callback with an error or results.
+ * Returns (via Callback):
+ *   - An error, if any (nullable)
+ *   - The fly-over times as an array (null if error):
+ *     [ { risetime: <number>, duration: <number> }, ... ]
+ */
 
+const { fetchMyIP } = require('./fetchIP');
+const { fetchCoordsByIP } = require('./fetchCoords');
+const { fetchISSFlyOverTimes } = require('./fetchFlyBy');
 
-const fetchISSFlyOverTimes = function(coords, callback) {
-  const url = `https://iss-pass.herokuapp.com/json/?lat=${coords.latitude}&lon=${coords.longitude}`;
-
-  request(url, (error, response, body) => {
+const nextISSTimesForMyLocation = function(callback) {
+  fetchMyIP((error, ip) => {
     if (error) {
-      callback(error, null);
-      return;
+      return (callback(error, null));
     }
 
-    if (response.statusCode !== 200) {
-      callback(Error(`Status Code ${response.statusCode} when fetching ISS passes: ${body}`), null);
-      return;
-    }
+    fetchCoordsByIP(ip, (error, coords) => {
+      if (error) {
+        return (callback(error, null));
+      }
 
-    const flyOver = JSON.parse(body).response;
-    callback(null, flyOver);
+      fetchISSFlyOverTimes(coords, (error, flyOver) => {
+        if (error) {
+          return (callback(error, null));
+        }
+        
+        callback(null, flyOver);
+
+      });
+    });
   });
+
+
+
+
+
+
+
+
+
 };
 
-module.exports = { fetchISSFlyOverTimes };
+
+module.exports = { nextISSTimesForMyLocation };
